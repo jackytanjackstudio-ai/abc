@@ -1,14 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    @apply scroll-smooth;
+    @apply scroll-smooth antialiased;
   }
 
   body {
-    @apply font-sans;
+    @apply font-sans text-jack-black bg-white;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -18,10 +28,64 @@
   }
 
   .btn-primary {
-    @apply bg-jack-black text-white px-8 py-3 text-sm font-medium tracking-wide uppercase transition-all hover:bg-opacity-90 active:scale-95;
+    @apply relative bg-jack-black text-white px-10 py-4 text-sm font-medium tracking-[0.15em] uppercase transition-all duration-300 overflow-hidden;
+  }
+
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full transition-transform duration-1000;
+  }
+
+  .btn-primary:hover::before {
+    @apply translate-x-full;
   }
 
   .btn-secondary {
-    @apply border border-jack-black text-jack-black px-8 py-3 text-sm font-medium tracking-wide uppercase transition-all hover:bg-jack-black hover:text-white active:scale-95;
+    @apply relative border-2 border-jack-black text-jack-black px-10 py-4 text-sm font-medium tracking-[0.15em] uppercase transition-all duration-300 overflow-hidden;
+  }
+
+  .btn-secondary::before {
+    content: '';
+    @apply absolute inset-0 bg-jack-black -translate-x-full transition-transform duration-300;
+    z-index: -1;
+  }
+
+  .btn-secondary:hover {
+    @apply text-white;
+  }
+
+  .btn-secondary:hover::before {
+    @apply translate-x-0;
+  }
+
+  .luxury-gradient {
+    background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 50%, #f5f5f5 100%);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-jack-black via-gray-800 to-jack-black bg-clip-text text-transparent;
+  }
+
+  .shine-effect {
+    @apply relative overflow-hidden;
+  }
+
+  .shine-effect::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full;
+    animation: shine 3s infinite;
+  }
+
+  @keyframes shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .card-premium {
+    @apply bg-white rounded-sm shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)] transition-all duration-500;
+  }
+
+  .divider-luxury {
+    @apply relative h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent;
   }
 }

@@ -1,20 +1,18 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
-const products = [
-  { id: 1, name: 'THE CABIN S', category: 'Carry-On', price: 895, color: 'Matte Black' },
-  { id: 2, name: 'THE CABIN S', category: 'Carry-On', price: 895, color: 'Silver' },
-  { id: 3, name: 'THE CABIN S', category: 'Carry-On', price: 895, color: 'Desert Rose' },
-  { id: 4, name: 'THE CHECK-IN M', category: 'Medium Luggage', price: 1195, color: 'Matte Black' },
-  { id: 5, name: 'THE CHECK-IN M', category: 'Medium Luggage', price: 1195, color: 'Navy Blue' },
-  { id: 6, name: 'THE CHECK-IN M', category: 'Medium Luggage', price: 1195, color: 'White' },
-  { id: 7, name: 'THE CHECK-IN L', category: 'Large Luggage', price: 1395, color: 'Matte Black' },
-  { id: 8, name: 'THE CHECK-IN L', category: 'Large Luggage', price: 1395, color: 'Silver' },
-  { id: 9, name: 'THE TRUNK', category: 'Travel Trunk', price: 1895, color: 'Matte Black' },
-]
+async function getProducts() {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/products`, {
+    cache: 'no-store'
+  })
+  if (!res.ok) return []
+  return res.json()
+}
 
-export default function Products() {
+export default async function Products() {
+  const products = await getProducts()
   return (
     <>
       <Navbar />
@@ -51,10 +49,19 @@ export default function Products() {
                 href={`/products/${product.id}`}
                 className="group cursor-pointer"
               >
-                <div className="aspect-[3/4] bg-jack-light mb-6 overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center transition-transform group-hover:scale-105 duration-500">
-                    <span className="text-gray-500 text-sm font-medium">{product.name}</span>
-                  </div>
+                <div className="aspect-[3/4] bg-jack-light mb-6 overflow-hidden relative">
+                  {product.image ? (
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-105 duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center transition-transform group-hover:scale-105 duration-500">
+                      <span className="text-gray-500 text-sm font-medium">{product.name}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold mb-1 tracking-wide group-hover:text-gray-600 transition">

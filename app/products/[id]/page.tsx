@@ -1,13 +1,71 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 
-export default function ProductDetail() {
+export default function ProductDetail({ params }: { params: { id: string } }) {
+  const [product, setProduct] = useState<any>(null)
   const [selectedColor, setSelectedColor] = useState('Matte Black')
   const [quantity, setQuantity] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [addedToCart, setAddedToCart] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/products/${params.id}`)
+      .then(res => res.json())
+      .then(data => {
+        setProduct(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="pt-28 pb-20 min-h-screen flex items-center justify-center">
+          <p>Loading...</p>
+        </div>
+        <Footer />
+      </>
+    )
+  }
+
+  if (!product) {
+    return (
+      <>
+        <Navbar />
+        <div className="pt-28 pb-20 min-h-screen flex items-center justify-center">
+          <p>Product not found</p>
+        </div>
+        <Footer />
+      </>
+    )
+  }
+
+  const addToCart = () => {
+    const cartItem = {
+      ...product,
+      color: selectedColor,
+      quantity: quantity
+    }
+
+    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]')
+    existingCart.push(cartItem)
+    localStorage.setItem('cart', JSON.stringify(existingCart))
+
+    setAddedToCart(true)
+    setTimeout(() => setAddedToCart(false), 2000)
+  }
+
+  const buyNow = () => {
+    addToCart()
+    window.location.href = '/checkout'
+  }
 
   const colors = [
     { name: 'Matte Black', class: 'bg-black' },
@@ -28,46 +86,55 @@ export default function ProductDetail() {
             <span className="mx-2">/</span>
             <Link href="/products" className="hover:text-jack-black">Products</Link>
             <span className="mx-2">/</span>
-            <span className="text-jack-black">The Cabin S</span>
+            <span className="text-jack-black">{product.name}</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
             {/* Product Images */}
             <div className="space-y-4">
-              <div className="aspect-[3/4] bg-jack-light">
-                <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center">
-                  <span className="text-gray-500 text-lg">THE CABIN S</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-square bg-jack-light cursor-pointer hover:opacity-75 transition">
-                    <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400"></div>
+              <div className="aspect-[3/4] bg-jack-light relative overflow-hidden">
+                {product.image ? (
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center">
+                    <span className="text-gray-500 text-lg">{product.name}</span>
                   </div>
-                ))}
+                )}
               </div>
+              {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-4">
+                  {product.images.slice(0, 4).map((img: string, i: number) => (
+                    <div key={i} className="aspect-square bg-jack-light cursor-pointer hover:opacity-75 transition relative overflow-hidden">
+                      <Image src={img} alt={`${product.name} ${i + 1}`} fill className="object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
             <div>
-              <h1 className="text-4xl font-bold mb-4 tracking-tight">THE CABIN S</h1>
-              <p className="text-xl text-gray-600 mb-6">Carry-On Luggage</p>
-              <p className="text-3xl font-semibold mb-8">$895</p>
+              <h1 className="text-4xl font-bold mb-4 tracking-tight">{product.name}</h1>
+              <p className="text-xl text-gray-600 mb-6">{product.category}</p>
+              <p className="text-3xl font-semibold mb-8">${product.price}</p>
 
               {/* Description */}
               <div className="mb-8 pb-8 border-b border-gray-200">
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  The Cabin S is the perfect companion for short trips and carry-on travel.
-                  Precision-engineered with aerospace-grade aluminum, featuring our signature
-                  grooved design and multi-wheel system for effortless maneuverability.
+                  {product.description}
                 </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li>• TSA-approved lock</li>
-                  <li>• 360° multi-wheel system</li>
-                  <li>• Telescopic handle with ergonomic grip</li>
-                  <li>• Interior divider system and compression straps</li>
-                  <li>• 36L capacity | 55 x 40 x 20 cm</li>
-                </ul>
+                {product.features && (
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    {product.features.map((feature: string, i: number) => (
+                      <li key={i}>• {feature}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               {/* Color Selection */}
@@ -111,10 +178,13 @@ export default function ProductDetail() {
               </div>
 
               {/* Add to Cart */}
-              <button className="w-full btn-primary mb-4">
-                ADD TO CART
+              <button
+                onClick={addToCart}
+                className="w-full btn-primary mb-4 relative"
+              >
+                {addedToCart ? '✓ ADDED TO CART' : 'ADD TO CART'}
               </button>
-              <button className="w-full btn-secondary">
+              <button onClick={buyNow} className="w-full btn-secondary">
                 BUY NOW
               </button>
 

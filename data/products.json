@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "name": "THE CABIN S",
+    "category": "Carry-On",
+    "price": 895,
+    "color": "Matte Black",
+    "description": "The Cabin S is the perfect companion for short trips and carry-on travel. Precision-engineered with aerospace-grade aluminum, featuring our signature grooved design and multi-wheel system for effortless maneuverability.",
+    "features": [
+      "TSA-approved lock",
+      "360° multi-wheel system",
+      "Telescopic handle with ergonomic grip",
+      "Interior divider system and compression straps",
+      "36L capacity | 55 x 40 x 20 cm"
+    ],
+    "image": "/images/products/1759305461851-EUROPOLO(PHOTO).png",
+    "images": [
+      "/images/products/cabin-s-black.jpg",
+      "/images/products/cabin-s-black-2.jpg",
+      "/images/products/cabin-s-black-3.jpg",
+      "/images/products/cabin-s-black-4.jpg"
+    ],
+    "inStock": true,
+    "featured": true
+  },
+  {
+    "id": 2,
+    "name": "THE CABIN S",
+    "category": "Carry-On",
+    "price": 895,
+    "color": "Silver",
+    "description": "The Cabin S is the perfect companion for short trips and carry-on travel. Precision-engineered with aerospace-grade aluminum.",
+    "features": [
+      "TSA-approved lock",
+      "360° multi-wheel system",
+      "Telescopic handle",
+      "36L capacity"
+    ],
+    "image": "/images/products/cabin-s-silver.jpg",
+    "images": [
+      "/images/products/cabin-s-silver.jpg"
+    ],
+    "inStock": true,
+    "featured": false
+  },
+  {
+    "id": 3,
+    "name": "THE CHECK-IN M",
+    "category": "Medium Luggage",
+    "price": 1195,
+    "color": "Matte Black",
+    "description": "The Check-In M offers the perfect balance of capacity and maneuverability. Ideal for week-long trips.",
+    "features": [
+      "TSA-approved lock",
+      "360° multi-wheel system",
+      "Telescopic handle",
+      "66L capacity | 67 x 45 x 26 cm"
+    ],
+    "image": "/images/products/checkin-m-black.jpg",
+    "images": [
+      "/images/products/checkin-m-black.jpg"
+    ],
+    "inStock": true,
+    "featured": true
+  },
+  {
+    "id": 4,
+    "name": "THE CHECK-IN L",
+    "category": "Large Luggage",
+    "price": 1395,
+    "color": "Matte Black",
+    "description": "The Check-In L provides maximum capacity for extended journeys. Built to last a lifetime.",
+    "features": [
+      "TSA-approved lock",
+      "360° multi-wheel system",
+      "Telescopic handle",
+      "84L capacity | 77 x 51 x 28 cm"
+    ],
+    "image": "/images/products/checkin-l-black.jpg",
+    "images": [
+      "/images/products/checkin-l-black.jpg"
+    ],
+    "inStock": true,
+    "featured": true
+  }
+]

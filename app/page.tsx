@@ -8,77 +8,119 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center bg-jack-light">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10"></div>
-        <div className="relative z-10 text-center container-custom">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-            REDEFINE YOUR JOURNEY
+      <section className="relative h-screen flex items-center justify-center luxury-gradient overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-jack-black/5 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-jack-black/5 rounded-full blur-3xl"></div>
+        </div>
+        <div className="relative z-10 text-center container-custom animate-fade-in">
+          <div className="mb-6 inline-block">
+            <span className="text-xs tracking-[0.3em] uppercase text-gray-500 font-light">Since 2025</span>
+          </div>
+          <h1 className="text-6xl md:text-8xl font-bold mb-8 tracking-tight leading-[0.95]">
+            Redefine Your<br />
+            <span className="text-gradient">Journey</span>
           </h1>
-          <p className="text-lg md:text-xl mb-12 text-gray-700 max-w-2xl mx-auto">
-            Precision-engineered luggage for the discerning traveler. Uncompromising quality meets timeless design.
+          <p className="text-lg md:text-xl mb-14 text-gray-600 max-w-2xl mx-auto font-light leading-relaxed">
+            Precision-engineered luggage for the discerning traveler.<br />
+            Uncompromising quality meets timeless design.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <Link href="/products" className="btn-primary">
-              EXPLORE COLLECTION
+              Explore Collection
             </Link>
             <Link href="/about" className="btn-secondary">
-              OUR STORY
+              Our Story
             </Link>
+          </div>
+          <div className="mt-20 flex items-center justify-center gap-12 text-sm text-gray-500">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-jack-black mb-1">100%</div>
+              <div className="text-xs tracking-wider">PREMIUM</div>
+            </div>
+            <div className="h-12 w-px bg-gray-300"></div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-jack-black mb-1">∞</div>
+              <div className="text-xs tracking-wider">WARRANTY</div>
+            </div>
+            <div className="h-12 w-px bg-gray-300"></div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-jack-black mb-1">5★</div>
+              <div className="text-xs tracking-wider">RATED</div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Featured Products */}
-      <section className="py-24 bg-white">
+      <section className="py-32 bg-white relative">
+        <div className="absolute top-0 left-0 right-0 h-px divider-luxury"></div>
         <div className="container-custom">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4 tracking-tight">ICONIC COLLECTION</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Explore our signature luggage pieces, crafted with premium materials and innovative design.
+          <div className="text-center mb-20">
+            <span className="text-xs tracking-[0.3em] uppercase text-gray-400 mb-4 block">Our Collection</span>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight">Iconic Pieces</h2>
+            <p className="text-gray-500 max-w-2xl mx-auto text-lg font-light leading-relaxed">
+              Explore our signature luggage collection, where craftsmanship<br className="hidden md:block" />
+              meets innovation in every detail.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {/* Product 1 */}
-            <div className="group cursor-pointer">
-              <div className="aspect-[3/4] bg-jack-light mb-6 overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center transition-transform group-hover:scale-105 duration-500">
-                  <span className="text-gray-400 text-sm">CABIN S</span>
+            <Link href="/products/1" className="group cursor-pointer">
+              <div className="card-premium overflow-hidden mb-6">
+                <div className="aspect-[3/4] bg-jack-light overflow-hidden relative">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 flex items-center justify-center transition-all duration-700 group-hover:scale-110">
+                    <span className="text-gray-400 text-sm tracking-[0.2em] font-light">CABIN S</span>
+                  </div>
+                  <div className="absolute inset-0 bg-jack-black opacity-0 group-hover:opacity-5 transition-opacity duration-500"></div>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2 tracking-wide">THE CABIN S</h3>
-              <p className="text-gray-600 text-sm mb-3">Carry-On Luggage</p>
-              <p className="text-lg font-medium">$895</p>
-            </div>
+              <div className="px-1">
+                <h3 className="text-xl font-semibold mb-2 tracking-tight group-hover:text-gray-600 transition-colors">The Cabin S</h3>
+                <p className="text-gray-500 text-sm mb-3 font-light tracking-wide">Carry-On Luggage</p>
+                <p className="text-xl font-medium">$895</p>
+              </div>
+            </Link>
 
             {/* Product 2 */}
-            <div className="group cursor-pointer">
-              <div className="aspect-[3/4] bg-jack-light mb-6 overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center transition-transform group-hover:scale-105 duration-500">
-                  <span className="text-gray-500 text-sm">CHECK-IN M</span>
+            <Link href="/products/3" className="group cursor-pointer">
+              <div className="card-premium overflow-hidden mb-6">
+                <div className="aspect-[3/4] bg-jack-light overflow-hidden relative">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-200 via-gray-300 to-gray-400 flex items-center justify-center transition-all duration-700 group-hover:scale-110">
+                    <span className="text-gray-500 text-sm tracking-[0.2em] font-light">CHECK-IN M</span>
+                  </div>
+                  <div className="absolute inset-0 bg-jack-black opacity-0 group-hover:opacity-5 transition-opacity duration-500"></div>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2 tracking-wide">THE CHECK-IN M</h3>
-              <p className="text-gray-600 text-sm mb-3">Medium Luggage</p>
-              <p className="text-lg font-medium">$1,195</p>
-            </div>
+              <div className="px-1">
+                <h3 className="text-xl font-semibold mb-2 tracking-tight group-hover:text-gray-600 transition-colors">The Check-In M</h3>
+                <p className="text-gray-500 text-sm mb-3 font-light tracking-wide">Medium Luggage</p>
+                <p className="text-xl font-medium">$1,195</p>
+              </div>
+            </Link>
 
             {/* Product 3 */}
-            <div className="group cursor-pointer">
-              <div className="aspect-[3/4] bg-jack-light mb-6 overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center transition-transform group-hover:scale-105 duration-500">
-                  <span className="text-gray-600 text-sm">CHECK-IN L</span>
+            <Link href="/products/4" className="group cursor-pointer">
+              <div className="card-premium overflow-hidden mb-6">
+                <div className="aspect-[3/4] bg-jack-light overflow-hidden relative">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500 flex items-center justify-center transition-all duration-700 group-hover:scale-110">
+                    <span className="text-gray-600 text-sm tracking-[0.2em] font-light">CHECK-IN L</span>
+                  </div>
+                  <div className="absolute inset-0 bg-jack-black opacity-0 group-hover:opacity-5 transition-opacity duration-500"></div>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2 tracking-wide">THE CHECK-IN L</h3>
-              <p className="text-gray-600 text-sm mb-3">Large Luggage</p>
-              <p className="text-lg font-medium">$1,395</p>
-            </div>
+              <div className="px-1">
+                <h3 className="text-xl font-semibold mb-2 tracking-tight group-hover:text-gray-600 transition-colors">The Check-In L</h3>
+                <p className="text-gray-500 text-sm mb-3 font-light tracking-wide">Large Luggage</p>
+                <p className="text-xl font-medium">$1,395</p>
+              </div>
+            </Link>
           </div>
 
-          <div className="text-center mt-12">
-            <Link href="/products" className="btn-primary">
-              VIEW ALL PRODUCTS
+          <div className="text-center mt-16">
+            <Link href="/products" className="btn-primary inline-block">
+              View All Products
             </Link>
           </div>
         </div>
