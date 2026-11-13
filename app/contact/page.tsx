@@ -1,12 +1,9 @@
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
 
 export default function Contact() {
   return (
     <>
-      <Navbar />
 
-      <main className="pt-28 pb-20">
+      <main className="pt-12 pb-20">
         <div className="container-custom">
           {/* Header */}
           <div className="text-center mb-16">
@@ -196,7 +193,6 @@ export default function Contact() {
         </div>
       </main>
 
-      <Footer />
     </>
   )
 }

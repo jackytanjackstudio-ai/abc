@@ -1,228 +1,134 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { loadStripe } from '@stripe/stripe-js'
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
-import Image from 'next/image'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { MARKETS, formatMoney } from '@/lib/catalog'
+import { useCart } from '@/lib/cart'
+import { getAttribution, track } from '@/lib/analytics'
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+interface QuoteResponse {
+  currency: string
+  lines: { lineNo: number; designId: string; qty: number; title: string; unitCents: number }[]
+  subtotalCents: number
+  personalizationCents: number
+  shippingCents: number
+  taxCents: number
+  totalCents: number
+  productionTime: string
+  transitTime: string
+}
 
 export default function Checkout() {
-  const router = useRouter()
-  const [cart, setCart] = useState<any[]>([])
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe')
-  const [loading, setLoading] = useState(false)
+  const lines = useCart()
+  const [mounted, setMounted] = useState(false)
+  const [country, setCountry] = useState('US')
+  const [q, setQ] = useState<QuoteResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [paying, setPaying] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  const payload = lines.map((l) => ({ designId: l.design.id, qty: l.qty }))
+  const key = JSON.stringify(payload)
 
   useEffect(() => {
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      setCart(JSON.parse(savedCart))
+    if (!mounted || payload.length === 0) return
+    let live = true
+    setQ(null)
+    setError(null)
+    fetch('/api/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines: payload, country }) })
+      .then(async (r) => {
+        const d = await r.json()
+        if (!live) return
+        if (!r.ok) setError(d.error)
+        else setQ(d)
+      })
+      .catch(() => live && setError('Could not calculate the total. Check your connection.'))
+    return () => {
+      live = false
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, key, country])
 
-  const total = cart.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0)
-
-  const handleStripeCheckout = async () => {
-    setLoading(true)
+  async function pay() {
+    if (!q) return
+    setPaying(true)
+    setError(null)
+    track('begin_checkout', { value: q.totalCents / 100, currency: q.currency, lines: q.lines.length })
     try {
-      const res = await fetch('/api/checkout', {
+      const r = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cart })
+        body: JSON.stringify({ lines: payload, country, attribution: getAttribution() }),
       })
-
-      const data = await res.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert('Failed to create checkout session')
-      }
-    } catch (error) {
-      alert('Checkout failed. Please try again.')
-    } finally {
-      setLoading(false)
+      const d = await r.json()
+      if (!r.ok || !d.url) throw new Error(d.error || 'Could not start payment.')
+      window.location.href = d.url
+    } catch (e) {
+      setError((e as Error).message)
+      setPaying(false)
     }
   }
 
-  const createPayPalOrder = (data: any, actions: any) => {
-    return actions.order.create({
-      purchase_units: cart.map(item => ({
-        amount: {
-          currency_code: 'USD',
-          value: (item.price * (item.quantity || 1)).toFixed(2),
-        },
-        description: `${item.name} - ${item.color}`,
-      }))
-    })
-  }
-
-  const onPayPalApprove = async (data: any, actions: any) => {
-    const order = await actions.order.capture()
-    localStorage.removeItem('cart')
-    router.push('/checkout/success?payment_method=paypal')
-  }
-
-  if (cart.length === 0) {
+  if (!mounted) return <div className="container-custom py-12" aria-busy="true" />
+  if (lines.length === 0)
     return (
-      <>
-        <Navbar />
-        <div className="pt-28 pb-20 min-h-screen">
-          <div className="container-custom text-center py-20">
-            <h1 className="text-4xl font-bold mb-4">Your Cart is Empty</h1>
-            <p className="text-gray-600 mb-8">Add some products to your cart to checkout</p>
-            <a href="/products" className="btn-primary inline-block">
-              Browse Products
-            </a>
-          </div>
-        </div>
-        <Footer />
-      </>
+      <div className="container-custom py-12">
+        <h1 className="text-4xl">Checkout</h1>
+        <p className="mt-6 text-forest-soft">Your cart is empty.</p>
+        <Link href="/products" className="btn-primary mt-6">Shop luggage</Link>
+      </div>
     )
-  }
 
   return (
-    <>
-      <Navbar />
-      <div className="pt-28 pb-20 min-h-screen bg-gray-50">
-        <div className="container-custom">
-          <h1 className="text-4xl font-bold mb-12 text-center">Checkout</h1>
+    <div className="container-custom max-w-3xl py-12">
+      <h1 className="text-4xl">Checkout</h1>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Cart Items */}
-            <div>
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <h2 className="text-2xl font-semibold mb-6">Order Summary</h2>
-                <div className="space-y-6">
-                  {cart.map((item, index) => (
-                    <div key={index} className="flex gap-4 pb-6 border-b border-gray-200 last:border-0">
-                      <div className="w-24 h-32 bg-gray-100 rounded relative overflow-hidden flex-shrink-0">
-                        {item.image ? (
-                          <Image src={item.image} alt={item.name} fill className="object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                            No Image
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold mb-1">{item.name}</h3>
-                        <p className="text-sm text-gray-600 mb-2">{item.color}</p>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity || 1}</p>
-                        <p className="text-lg font-medium mt-2">${item.price}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="flex justify-between text-xl font-bold">
-                    <span>Total:</span>
-                    <span>${total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div>
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <h2 className="text-2xl font-semibold mb-6">Payment Method</h2>
-
-                {/* Payment Method Selection */}
-                <div className="mb-8">
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => setPaymentMethod('stripe')}
-                      className={`p-4 border-2 rounded-lg transition ${
-                        paymentMethod === 'stripe'
-                          ? 'border-jack-black bg-jack-light'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="font-semibold mb-1">Credit Card</div>
-                        <div className="text-xs text-gray-600">Powered by Stripe</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => setPaymentMethod('paypal')}
-                      className={`p-4 border-2 rounded-lg transition ${
-                        paymentMethod === 'paypal'
-                          ? 'border-jack-black bg-jack-light'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="font-semibold mb-1">PayPal</div>
-                        <div className="text-xs text-gray-600">Fast & Secure</div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Stripe Checkout */}
-                {paymentMethod === 'stripe' && (
-                  <div>
-                    <button
-                      onClick={handleStripeCheckout}
-                      disabled={loading}
-                      className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Processing...' : 'Pay with Credit Card'}
-                    </button>
-                    <p className="text-xs text-gray-500 text-center mt-4">
-                      Secure payment processed by Stripe
-                    </p>
-                  </div>
-                )}
-
-                {/* PayPal Checkout */}
-                {paymentMethod === 'paypal' && (
-                  <div>
-                    <PayPalScriptProvider
-                      options={{
-                        clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!,
-                        currency: 'USD'
-                      }}
-                    >
-                      <PayPalButtons
-                        createOrder={createPayPalOrder}
-                        onApprove={onPayPalApprove}
-                        style={{
-                          layout: 'vertical',
-                          color: 'black',
-                          shape: 'rect',
-                          label: 'pay'
-                        }}
-                      />
-                    </PayPalScriptProvider>
-                    <p className="text-xs text-gray-500 text-center mt-4">
-                      Secure payment processed by PayPal
-                    </p>
-                  </div>
-                )}
-
-                {/* Security Features */}
-                <div className="mt-8 pt-8 border-t border-gray-200">
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    <span>SSL Encrypted • Secure Checkout</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="mt-8">
+        <label htmlFor="country" className="text-sm font-semibold">Ship to</label>
+        <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="mt-2 block w-full rounded-full border border-forest/30 bg-white px-4 py-3">
+          {Object.entries(MARKETS).map(([code, m]) => (
+            <option key={code} value={code}>{m.name}</option>
+          ))}
+        </select>
+        <p className="mt-2 text-sm text-forest-soft">Not listed? We don’t ship there yet — you’ll be told before paying.</p>
       </div>
-      <Footer />
-    </>
+
+      <section className="mt-8 rounded-2xl bg-sand/60 p-6" aria-live="polite" aria-busy={!q && !error}>
+        {lines.map((l) => (
+          <div key={l.lineId} className="flex justify-between py-1 text-sm">
+            <span>
+              {l.qty} × {l.design.modelName} · {l.design.patternName}
+              {l.design.name && <> · <span className="font-mono">{l.design.name.text}</span></>}
+            </span>
+            <span>{formatMoney(l.design.pricing.unitCents * l.qty)}</span>
+          </div>
+        ))}
+        <hr className="my-4 border-forest/15" />
+        {q ? (
+          <dl className="space-y-1 text-sm">
+            <div className="flex justify-between"><dt>Cases</dt><dd>{formatMoney(q.subtotalCents, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>Name printing</dt><dd>{formatMoney(q.personalizationCents, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>Shipping to {MARKETS[country].name}</dt><dd>{formatMoney(q.shippingCents, q.currency)}</dd></div>
+            <div className="flex justify-between"><dt>Taxes &amp; duties</dt><dd>{formatMoney(q.taxCents, q.currency)}</dd></div>
+            <div className="flex justify-between pt-2 text-base font-semibold"><dt>Total ({q.currency.toUpperCase()})</dt><dd>{formatMoney(q.totalCents, q.currency)}</dd></div>
+            <p className="pt-3 text-forest-soft">
+              Made to order in {q.productionTime}, then {q.transitTime} in transit.
+            </p>
+          </dl>
+        ) : (
+          !error && <p className="text-sm text-forest-soft">Calculating…</p>
+        )}
+        {error && (
+          <p className="text-sm text-alert">
+            {error} <Link href="/cart" className="underline">Back to cart</Link>
+          </p>
+        )}
+      </section>
+
+      <button type="button" className="btn-primary mt-6 w-full" disabled={!q || paying} onClick={pay}>
+        {paying ? 'Redirecting to secure payment…' : q ? `Pay ${formatMoney(q.totalCents, q.currency)}` : 'Pay'}
+      </button>
+      <p className="mt-3 text-center text-xs text-forest-soft">Card details are entered on Stripe’s secure page.</p>
+    </div>
   )
 }

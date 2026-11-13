@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,17 +8,16 @@
   html {
     @apply scroll-smooth antialiased;
   }
-
   body {
-    @apply font-sans text-jack-black bg-white;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    letter-spacing: -0.01em;
+    @apply font-sans bg-paper text-forest;
   }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+  h1, h2, h3 {
+    @apply font-serif;
+    letter-spacing: -0.015em;
+  }
+  :focus-visible {
+    outline: 2px solid #1F3A2E;
+    outline-offset: 2px;
   }
 }
 
@@ -26,66 +25,22 @@
   .container-custom {
     @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
   }
-
   .btn-primary {
-    @apply relative bg-jack-black text-white px-10 py-4 text-sm font-medium tracking-[0.15em] uppercase transition-all duration-300 overflow-hidden;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-forest px-7 py-3.5 text-sm font-semibold tracking-wide text-paper transition hover:bg-forest-hover disabled:cursor-not-allowed disabled:opacity-40;
   }
-
-  .btn-primary::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full transition-transform duration-1000;
-  }
-
-  .btn-primary:hover::before {
-    @apply translate-x-full;
-  }
-
   .btn-secondary {
-    @apply relative border-2 border-jack-black text-jack-black px-10 py-4 text-sm font-medium tracking-[0.15em] uppercase transition-all duration-300 overflow-hidden;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-forest px-7 py-3.5 text-sm font-semibold tracking-wide text-forest transition hover:bg-forest hover:text-paper;
   }
-
-  .btn-secondary::before {
-    content: '';
-    @apply absolute inset-0 bg-jack-black -translate-x-full transition-transform duration-300;
-    z-index: -1;
+  .chip {
+    @apply rounded-full border border-forest/25 px-4 py-2 text-sm font-medium transition hover:border-forest;
   }
-
-  .btn-secondary:hover {
-    @apply text-white;
+  .chip-active {
+    @apply border-forest bg-sage-soft;
   }
-
-  .btn-secondary:hover::before {
-    @apply translate-x-0;
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.2em] text-forest-soft;
   }
-
-  .luxury-gradient {
-    background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 50%, #f5f5f5 100%);
-  }
-
-  .text-gradient {
-    @apply bg-gradient-to-r from-jack-black via-gray-800 to-jack-black bg-clip-text text-transparent;
-  }
-
-  .shine-effect {
-    @apply relative overflow-hidden;
-  }
-
-  .shine-effect::after {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full;
-    animation: shine 3s infinite;
-  }
-
-  @keyframes shine {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-
-  .card-premium {
-    @apply bg-white rounded-sm shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_20px_60px_rgb(0,0,0,0.12)] transition-all duration-500;
-  }
-
-  .divider-luxury {
-    @apply relative h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent;
+  .svg-fill > svg {
+    @apply block h-full w-full;
   }
 }

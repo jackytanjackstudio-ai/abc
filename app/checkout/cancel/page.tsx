@@ -1,12 +1,9 @@
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
 
 export default function CheckoutCancel() {
   return (
     <>
-      <Navbar />
-      <div className="min-h-screen pt-28 pb-20 luxury-gradient flex items-center">
+      <div className="min-h-screen pt-12 pb-20 luxury-gradient flex items-center">
         <div className="container-custom">
           <div className="max-w-2xl mx-auto text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-8">
@@ -34,7 +31,6 @@ export default function CheckoutCancel() {
           </div>
         </div>
       </div>
-      <Footer />
     </>
   )
 }
