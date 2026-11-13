@@ -60,7 +60,8 @@ async function createPg(url: string): Promise<Db> {
   const pool = new Pool({
     connectionString: url,
     max: 5,
-    ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false },
+    // remote hosts (Neon etc.) get TLS with certificate verification
+    ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : true,
   })
   return {
     query: (sql, params) => pool.query(sql, params as unknown[]) as never,
