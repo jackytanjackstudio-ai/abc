@@ -1,0 +1,15 @@
+import { NextResponse } from 'next/server'
+import { authorizeProduction } from '@/lib/production'
+import { readJobs } from '@/lib/store'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: Request) {
+  if (!authorizeProduction(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const url = new URL(request.url)
+  const status = url.searchParams.get('status')
+  const jobs = readJobs()
+    .filter((j) => !status || j.status === status)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  return NextResponse.json(jobs, { headers: { 'Cache-Control': 'no-store' } })
+}

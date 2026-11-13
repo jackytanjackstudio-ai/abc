@@ -1,46 +1,101 @@
-import Link from 'next/link'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
+'use client'
 
-export default function CheckoutSuccess() {
-  return (
-    <>
-      <Navbar />
-      <div className="min-h-screen pt-28 pb-20 luxury-gradient flex items-center">
-        <div className="container-custom">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-5xl font-bold mb-4">Payment Successful!</h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Thank you for your purchase. Your order has been confirmed and will be shipped shortly.
-            </p>
-            <div className="card-premium p-8 mb-8">
-              <p className="text-sm text-gray-600 mb-4">
-                You will receive an email confirmation with your order details and tracking information.
-              </p>
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>Check your email for order confirmation</span>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/products" className="btn-primary inline-block">
-                Continue Shopping
-              </Link>
-              <Link href="/" className="btn-secondary inline-block">
-                Return Home
-              </Link>
-            </div>
-          </div>
-        </div>
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { formatMoney } from '@/lib/catalog'
+import { cart } from '@/lib/cart'
+import { track } from '@/lib/analytics'
+
+interface OrderView {
+  number: string
+  status: string
+  currency: string
+  totalCents: number
+  lines: { lineNo: number; title: string; qty: number; unitCents: number; previewSvg: string | null; nameText: string | null }[]
+}
+
+function Success() {
+  const params = useSearchParams()
+  const id = params.get('order')
+  const token = params.get('token')
+  const [order, setOrder] = useState<OrderView | null>(null)
+  const [error, setError] = useState(false)
+  const tries = useRef(0)
+
+  useEffect(() => {
+    if (!id || !token) return setError(true)
+    let timer: ReturnType<typeof setTimeout>
+    const load = () =>
+      fetch(`/api/orders/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((o: OrderView) => {
+          setOrder(o)
+          // payment is confirmed by the webhook; poll briefly until it lands
+          if (o.status === 'pending_payment' && tries.current++ < 10) timer = setTimeout(load, 2000)
+        })
+        .catch(() => setError(true))
+    load()
+    return () => clearTimeout(timer)
+  }, [id, token])
+
+  const paid = order?.status === 'paid' || order?.status === 'needs_review'
+  useEffect(() => {
+    if (!order || !paid) return
+    cart.clear()
+    const key = `viarou_purchase_${order.number}`
+    try {
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, '1')
+        track('purchase', { order_number: order.number, value: order.totalCents / 100, currency: order.currency })
+      }
+    } catch {}
+  }, [order, paid])
+
+  if (error)
+    return (
+      <div className="container-custom py-16">
+        <h1 className="text-4xl">We couldn’t find that order</h1>
+        <p className="mt-4 text-forest-soft">If you were charged, your confirmation email has your order number. <Link href="/contact" className="underline">Contact us</Link>.</p>
       </div>
-      <Footer />
-    </>
+    )
+  if (!order) return <div className="container-custom py-16" aria-busy="true">Loading your order…</div>
+
+  return (
+    <div className="container-custom max-w-3xl py-16">
+      <p className="eyebrow">{paid ? 'Order confirmed' : 'Confirming payment'}</p>
+      <h1 className="mt-3 text-4xl">Order {order.number}</h1>
+      <p className="mt-4 text-forest-soft">
+        {paid
+          ? 'Thank you. Keep this order number — production, shipping and tracking updates all use it.'
+          : 'We’re waiting for the payment confirmation. This usually takes a few seconds; you can refresh this page.'}
+      </p>
+      {order.status === 'needs_review' && (
+        <p className="mt-4 rounded-xl bg-sand p-4 text-sm">Our team needs to review this order before production and will contact you shortly.</p>
+      )}
+      <ul className="mt-8 space-y-4">
+        {order.lines.map((l) => (
+          <li key={l.lineNo} className="flex items-center gap-5 rounded-2xl bg-sand/60 p-4">
+            {l.previewSvg && <div className="svg-fill h-32 w-24 shrink-0" dangerouslySetInnerHTML={{ __html: l.previewSvg }} />}
+            <div className="flex-1 text-sm">
+              <p className="font-semibold">{l.title}</p>
+              <p>{l.nameText ? <>Name: <span className="font-mono">{l.nameText}</span></> : 'No name'}</p>
+              <p className="text-forest-soft">Qty {l.qty}</p>
+            </div>
+            <p className="font-semibold">{formatMoney(l.unitCents * l.qty, order.currency)}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-6 text-right text-lg font-semibold">Total {formatMoney(order.totalCents, order.currency)}</p>
+      <Link href="/products" className="btn-secondary mt-8">Continue shopping</Link>
+    </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <Success />
+    </Suspense>
   )
 }
