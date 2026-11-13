@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Stripe from 'stripe'
 import { QuoteError, quote } from '@/lib/pricing'
-import { tx, type Order } from '@/lib/store'
+import { insertOrder, type Order } from '@/lib/store'
 
 const ATTRIBUTION_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'landing_pattern']
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     // Prices, stock and designs are re-resolved server-side; client totals are ignored.
-    const q = quote(body.lines, String(body.country))
+    const q = await quote(body.lines, String(body.country))
     const attribution: Record<string, string> = {}
     for (const k of ATTRIBUTION_KEYS) {
       const v = body.attribution?.[k]
@@ -89,9 +89,7 @@ export async function POST(request: Request) {
       cancel_url: `${base}/cart?cancelled=1`,
     })
     order.stripeSessionId = session.id
-    await tx((db) => {
-      db.orders[order.id] = order
-    })
+    await insertOrder(order)
     return NextResponse.json({ url: session.url, orderId: order.id })
   } catch (e) {
     if (e instanceof QuoteError) return NextResponse.json({ error: e.message, lineIndex: e.lineIndex }, { status: 422 })

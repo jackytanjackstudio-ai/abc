@@ -1,7 +1,7 @@
 import 'server-only'
 import { CURRENCY, MARKETS, PRODUCTION_DAYS } from './catalog'
 import { designTitle, type DesignSnapshot } from './design'
-import { readDesign, readInventory } from './store'
+import { getDesign, getInventory } from './store'
 
 export interface CartLineInput {
   designId: string
@@ -14,14 +14,16 @@ export class QuoteError extends Error {
   }
 }
 
-export function quote(lines: CartLineInput[], country: string) {
+export async function quote(lines: CartLineInput[], country: string) {
   const market = MARKETS[country]
   if (!market) throw new QuoteError('We do not ship to this destination yet.')
   if (!Array.isArray(lines) || lines.length === 0) throw new QuoteError('Your cart is empty.')
-  const inventory = readInventory()
+  if (lines.length > 20) throw new QuoteError('Too many lines in one order.')
+  const inventory = await getInventory()
   const needBySku: Record<string, number> = {}
+  const designs = await Promise.all(lines.map((l) => getDesign(String(l.designId))))
   const resolved = lines.map((l, i) => {
-    const design = readDesign(String(l.designId))
+    const design = designs[i]
     if (!design) throw new QuoteError('A design in your cart could not be found. Please remove it and add it again.', i)
     const qty = Math.floor(Number(l.qty))
     if (!(qty >= 1 && qty <= 10)) throw new QuoteError('Quantity must be between 1 and 10.', i)
@@ -58,5 +60,5 @@ export function quote(lines: CartLineInput[], country: string) {
   }
 }
 
-export type Quote = ReturnType<typeof quote>
+export type Quote = Awaited<ReturnType<typeof quote>>
 export type QuoteLine = Quote['lines'][number] & { design: DesignSnapshot }

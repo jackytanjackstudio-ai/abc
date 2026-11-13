@@ -4,7 +4,7 @@ import { QuoteError, quote } from '@/lib/pricing'
 export async function POST(request: Request) {
   try {
     const { lines, country } = await request.json()
-    const q = quote(lines, String(country))
+    const q = await quote(lines, String(country))
     return NextResponse.json({
       ...q,
       lines: q.lines.map((l) => ({ lineNo: l.lineNo, designId: l.design.id, qty: l.qty, title: l.title, unitCents: l.design.pricing.unitCents })),

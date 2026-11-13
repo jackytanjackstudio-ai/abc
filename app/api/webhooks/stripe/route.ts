@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import Stripe from 'stripe'
-import { tx } from '@/lib/store'
+import { applyPaymentEvent } from '@/lib/store'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,13 +28,13 @@ export async function POST(request: Request) {
   if (!HANDLED.has(event.type)) return NextResponse.json({ received: true })
 
   const session = event.data.object as Stripe.Checkout.Session
-  await tx((db) => {
-    if (db.processedEvents.includes(event.id)) return // duplicate delivery
-    db.processedEvents.push(event.id)
-    if (db.processedEvents.length > 5000) db.processedEvents.splice(0, 1000)
+  const orderId = session.metadata?.orderId
+  if (!orderId) return NextResponse.json({ received: true })
 
-    const order = db.orders[session.metadata?.orderId ?? '']
-    if (!order || order.stripeSessionId !== session.id) return
+  // Event id is recorded and the order + stock rows are locked in one transaction,
+  // so duplicate or concurrent deliveries are applied at most once.
+  await applyPaymentEvent(event.id, orderId, ({ order, inventory, designHasName, activeJobKeys, newJobs }) => {
+    if (order.stripeSessionId !== session.id) return
     const now = new Date().toISOString()
 
     if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
@@ -59,33 +59,32 @@ export async function POST(request: Request) {
 
     const need: Record<string, number> = {}
     order.lines.forEach((l) => (need[l.sku] = (need[l.sku] ?? 0) + l.qty))
-    const short = Object.entries(need).filter(([s, n]) => (db.inventory[s] ?? 0) < n)
+    const short = Object.entries(need).filter(([s, n]) => (inventory[s] ?? 0) < n)
     if (short.length) {
       order.status = 'needs_review' // charged but cannot fulfil → manual handling
       order.events.push({ at: now, type: 'stock_conflict', note: short.map(([s]) => s).join(',') })
       return
     }
-    Object.entries(need).forEach(([s, n]) => (db.inventory[s] = (db.inventory[s] ?? 0) - n))
+    Object.entries(need).forEach(([s, n]) => (inventory[s] = (inventory[s] ?? 0) - n))
     order.status = 'paid'
     order.events.push({ at: now, type: 'paid' })
 
     // One active production job per order line + design version.
     for (const l of order.lines) {
       const jobKey = `${order.id}:${l.lineNo}:${l.designVersion}`
-      if (Object.values(db.jobs).some((j) => j.key === jobKey && j.status !== 'rejected')) continue
-      const id = crypto.randomUUID()
-      db.jobs[id] = {
-        id,
+      if (activeJobKeys.has(jobKey)) continue
+      newJobs.push({
+        id: crypto.randomUUID(),
         key: jobKey,
         orderId: order.id,
         orderNumber: order.number,
         lineNo: l.lineNo,
         designId: l.designId,
         qty: l.qty,
-        needsTransfer: !!db.designs[l.designId]?.name,
+        needsTransfer: !!designHasName[l.designId],
         status: 'queued',
         createdAt: now,
-      }
+      })
     }
   })
   return NextResponse.json({ received: true })

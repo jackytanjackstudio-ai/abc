@@ -18,7 +18,7 @@ import {
   sku,
 } from '@/lib/catalog'
 import { renderCaseSvg, renderOpenSvg, renderSwatchSvg } from '@/lib/render'
-import { readInventory } from '@/lib/store'
+import { getInventory } from '@/lib/store'
 
 export const dynamic = 'force-dynamic' // live stock
 
@@ -32,7 +32,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   }
 }
 
-export default function ProductPage({
+export default async function ProductPage({
   params,
   searchParams,
 }: {
@@ -41,7 +41,7 @@ export default function ProductPage({
 }) {
   const model = getModel(params.slug)
   if (!model) notFound()
-  const inv = readInventory()
+  const inv = await getInventory()
   const inStock = (c: string) => (inv[sku(model.id, c)] ?? 0) > 0
 
   const requested = searchParams.pattern ? getPattern(searchParams.pattern) : undefined

@@ -14,7 +14,7 @@ import type { DesignInput, DesignSnapshot } from './design'
 import { loadServerFont } from './fonts-server'
 import { boxAt, checkPlacement, describeIssue, measureName, missingGlyphs, normalizeName, originFor } from './layout'
 import { renderCaseSvg } from './render'
-import { readInventory, tx } from './store'
+import { getDesign, getInventory, insertDesign } from './store'
 
 export class DesignError extends Error {
   constructor(public field: string, message: string) {
@@ -25,7 +25,7 @@ export class DesignError extends Error {
 const num = (v: unknown) => (typeof v === 'number' && isFinite(v) ? v : NaN)
 
 /** Re-runs the full layout on the server. Never trusts client-side bounds. */
-export function buildSnapshot(input: DesignInput, prev?: DesignSnapshot): DesignSnapshot {
+export function buildSnapshot(input: DesignInput, inventory: Record<string, number>, prev?: DesignSnapshot): DesignSnapshot {
   const model = getModel(input?.modelId)
   if (!model) throw new DesignError('modelId', 'Unknown case size.')
   const color = getColor(input.colorId)
@@ -33,7 +33,7 @@ export function buildSnapshot(input: DesignInput, prev?: DesignSnapshot): Design
   const pattern = getPattern(input.patternId)
   if (!pattern || !pattern.active) throw new DesignError('patternId', 'This pattern is not available.')
   const theSku = makeSku(model.id, color.id)
-  if ((readInventory()[theSku] ?? 0) <= 0) throw new DesignError('colorId', `${model.name} in ${color.name} is out of stock.`)
+  if ((inventory[theSku] ?? 0) <= 0) throw new DesignError('colorId', `${model.name} in ${color.name} is out of stock.`)
 
   const t = model.template
   let name: DesignSnapshot['name'] = null
@@ -115,10 +115,8 @@ export function buildSnapshot(input: DesignInput, prev?: DesignSnapshot): Design
 const round = (n: number) => Math.round(n * 100) / 100
 
 export async function saveDesign(input: DesignInput) {
-  const prev = input.supersedes ? await tx((db) => db.designs[input.supersedes!]) : undefined
-  const snap = buildSnapshot(input, prev)
-  await tx((db) => {
-    db.designs[snap.id] = snap
-  })
+  const prev = typeof input?.supersedes === 'string' ? await getDesign(input.supersedes) : undefined
+  const snap = buildSnapshot(input, await getInventory(), prev)
+  await insertDesign(snap)
   return snap
 }
