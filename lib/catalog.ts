@@ -19,6 +19,8 @@ export interface Template {
   safe: Rect
   keepOuts: { id: string; label: string; rect: Rect }[]
   recommended: { x: number; y: number }
+  /** quick-placement targets shown as Top / Centre / Bottom; snapped to the nearest valid spot */
+  presets: { id: 'top' | 'center' | 'bottom'; label: string; x: number; y: number }[]
   fontSizeMm: { min: number; max: number; default: number }
   maxChars: number
 }
@@ -104,6 +106,11 @@ function template(id: string, w: number, h: number): Template {
       { id: 'badge', label: 'brand badge', rect: { x: w / 2 - 40, y: h - inset - 34, w: 80, h: 34 } },
     ],
     recommended: { x: w / 2, y: Math.round(h * 0.3) },
+    presets: [
+      { id: 'top', label: 'Top', x: w / 2, y: Math.round(h * 0.22) },
+      { id: 'center', label: 'Centre', x: w / 2, y: Math.round(h * 0.5) },
+      { id: 'bottom', label: 'Bottom', x: w / 2, y: Math.round(h * 0.74) },
+    ],
     fontSizeMm: { min: 20, max: 80, default: 42 },
     maxChars: 14,
   }

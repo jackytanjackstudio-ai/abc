@@ -76,14 +76,16 @@ export default async function ProductPage({
           <div className="rounded-3xl bg-sand p-8">
             <SvgImage svg={renderOpenSvg(model, color)} className="mx-auto h-56" />
             <p className="mt-3 text-center text-sm text-forest-soft">
-              Front lid open: laptop sleeve and document pocket. Opening photos come from the approved product shoot.
+              The front lid opens on its own, so your laptop and documents are reachable while the case stands.
             </p>
           </div>
         </div>
 
         <div>
           <h1 className="text-4xl">{model.name}</h1>
-          <p className="mt-2 text-2xl font-semibold">{formatMoney(model.priceCents)}</p>
+          <p className="mt-2 text-2xl font-semibold">
+            {formatMoney(model.priceCents)} <span className="text-sm font-normal text-forest-soft">USD</span>
+          </p>
           <p className="text-sm text-forest-soft">Name printing +{formatMoney(PERSONALIZATION_FEE_CENTS)} (optional)</p>
 
           {unavailable && (
@@ -163,6 +165,7 @@ export default async function ProductPage({
             <div><dt className="text-forest-soft">In stock ({color.name})</dt><dd className="font-medium">{inv[sku(model.id, color.id)] ?? 0}</dd></div>
             <div><dt className="text-forest-soft">Made to order</dt><dd className="font-medium">{PRODUCTION_DAYS}</dd></div>
             <div><dt className="text-forest-soft">Delivery after production</dt><dd className="font-medium">{Object.values(MARKETS)[0].transit} (US)</dd></div>
+            <div className="col-span-2"><dt className="text-forest-soft">Ships to</dt><dd className="font-medium">{Object.values(MARKETS).map((m) => m.name).join(' · ')}</dd></div>
             <div className="col-span-2">
               <dt className="text-forest-soft">Inside</dt>
               <dd>

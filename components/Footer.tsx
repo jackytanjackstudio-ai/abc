@@ -41,7 +41,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="container-custom border-t border-paper/15 py-6 text-xs text-paper/60">
-        © {new Date().getFullYear()} {BRAND}. Brand name is a working placeholder.
+        © {new Date().getFullYear()} {BRAND}. Prices in USD.
       </div>
     </footer>
   )

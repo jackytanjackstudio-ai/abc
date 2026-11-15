@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS inventory (
   sku text PRIMARY KEY,
   qty integer NOT NULL CHECK (qty >= 0)
 );
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  status text NOT NULL DEFAULT 'new',
+  data jsonb NOT NULL
+);
 CREATE TABLE IF NOT EXISTS processed_events (
   id text PRIMARY KEY,
   at timestamptz NOT NULL DEFAULT now()
