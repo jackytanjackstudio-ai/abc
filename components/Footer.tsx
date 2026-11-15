@@ -1,70 +1,47 @@
 import Link from 'next/link'
+import { BRAND, SERIES } from '@/lib/catalog'
 
 export default function Footer() {
   return (
-    <footer className="bg-jack-black text-white">
-      <div className="container-custom py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-          {/* Brand */}
-          <div>
-            <h3 className="text-xl font-bold mb-4">JACK STUDIO</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Premium luggage crafted for the modern traveler. Quality, design, and durability in every piece.
-            </p>
-            <a href="tel:01112015288" className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              011-1201-5288
-            </a>
-          </div>
-
-          {/* Shop */}
-          <div>
-            <h4 className="text-sm font-semibold mb-4 tracking-wide">SHOP</h4>
-            <ul className="space-y-3 text-sm text-gray-400">
-              <li><Link href="/products" className="hover:text-white transition">All Products</Link></li>
-              <li><Link href="/collections" className="hover:text-white transition">Collections</Link></li>
-              <li><Link href="/new" className="hover:text-white transition">New Arrivals</Link></li>
-              <li><Link href="/bestsellers" className="hover:text-white transition">Bestsellers</Link></li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h4 className="text-sm font-semibold mb-4 tracking-wide">SUPPORT</h4>
-            <ul className="space-y-3 text-sm text-gray-400">
-              <li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li>
-              <li><Link href="/shipping" className="hover:text-white transition">Shipping Info</Link></li>
-              <li><Link href="/returns" className="hover:text-white transition">Returns</Link></li>
-              <li><Link href="/warranty" className="hover:text-white transition">Warranty</Link></li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h4 className="text-sm font-semibold mb-4 tracking-wide">COMPANY</h4>
-            <ul className="space-y-3 text-sm text-gray-400">
-              <li><Link href="/about" className="hover:text-white transition">About Us</Link></li>
-              <li><Link href="/sustainability" className="hover:text-white transition">Sustainability</Link></li>
-              <li><Link href="/stores" className="hover:text-white transition">Store Locator</Link></li>
-              <li><Link href="/careers" className="hover:text-white transition">Careers</Link></li>
-            </ul>
-          </div>
+    <footer className="mt-24 bg-forest text-paper">
+      <div className="container-custom grid grid-cols-2 gap-10 py-14 md:grid-cols-4">
+        <div className="col-span-2 md:col-span-1">
+          <p className="font-serif text-2xl tracking-[0.12em]">{BRAND}</p>
+          <p className="mt-3 max-w-xs text-sm text-paper/70">
+            Front-opening luggage, printed with the pattern you pick and the name you choose.
+          </p>
         </div>
-
-        {/* Bottom Bar */}
-        <div className="mt-16 pt-8 border-t border-gray-800">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-sm text-gray-400">
-              &copy; 2025 Jack Studio. All rights reserved.
-            </p>
-            <div className="flex space-x-6 text-sm text-gray-400">
-              <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-white transition">Terms of Service</Link>
-            </div>
-          </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-paper/60">Shop</p>
+          <ul className="mt-4 space-y-2 text-sm">
+            <li><Link href="/products" className="hover:underline">All luggage</Link></li>
+            {SERIES.map((s) => (
+              <li key={s.id}>
+                <Link href={`/collections/${s.id}`} className="hover:underline">{s.name}</Link>
+              </li>
+            ))}
+          </ul>
         </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-paper/60">Help</p>
+          <ul className="mt-4 space-y-2 text-sm">
+            <li><Link href="/help#shipping" className="hover:underline">Shipping</Link></li>
+            <li><Link href="/help#changes" className="hover:underline">Changes &amp; returns</Link></li>
+            <li><Link href="/help#faq" className="hover:underline">FAQ</Link></li>
+            <li><Link href="/help#orders" className="hover:underline">Order status</Link></li>
+            <li><Link href="/contact" className="hover:underline">Contact</Link></li>
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-paper/60">Studio</p>
+          <ul className="mt-4 space-y-2 text-sm">
+            <li><Link href="/studio" className="hover:underline">Personalize a case</Link></li>
+            <li><Link href="/collections" className="hover:underline">Browse patterns</Link></li>
+          </ul>
+        </div>
+      </div>
+      <div className="container-custom border-t border-paper/15 py-6 text-xs text-paper/60">
+        © {new Date().getFullYear()} {BRAND}. Brand name is a working placeholder.
       </div>
     </footer>
   )
