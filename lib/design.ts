@@ -5,6 +5,7 @@ export interface DesignNameInput {
   fontId: string
   sizeMm: number
   colorId: string
+  italic?: boolean
   /** outline centre, mm from the top-left of the front lid */
   x: number
   y: number
@@ -39,6 +40,8 @@ export interface DesignSnapshot {
     text: string
     fontId: string
     fontVersion: number
+    /** 'file' = designed italic font file, 'oblique' = 12° slant of the upright outlines, 'none' = upright */
+    italic: 'file' | 'oblique' | 'none'
     sizeMm: number
     colorId: string
     colorName: string

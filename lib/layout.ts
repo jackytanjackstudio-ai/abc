@@ -59,8 +59,49 @@ function pathData(commands: { type: string; x?: number; y?: number; x1?: number;
   return d
 }
 
-export function measureName(font: Font, text: string, sizeMm: number): MeasuredName | null {
-  const path = font.getPath(text, 0, 0, sizeMm, { kerning: true })
+function plainLayout(font: Font, text: string, sizeMm: number) {
+  const scale = sizeMm / font.unitsPerEm
+  const glyphs = Array.from(text).map((ch) => font.charToGlyph(ch))
+  const first = glyphs[0]?.getPath(0, 0, sizeMm)
+  if (!first) return font.getPath('', 0, 0, sizeMm)
+  first.commands = []
+  let x = 0
+  glyphs.forEach((g, i) => {
+    first.extend(g.getPath(x, 0, sizeMm))
+    let kern = 0
+    if (glyphs[i + 1]) {
+      try {
+        kern = font.getKerningValue(g, glyphs[i + 1])
+      } catch {
+        kern = 0
+      }
+    }
+    x += ((g.advanceWidth ?? 0) + kern) * scale
+  })
+  return first
+}
+
+export function measureName(font: Font, text: string, sizeMm: number, opts: { obliqueDeg?: number } = {}): MeasuredName | null {
+  let path: ReturnType<Font['getPath']>
+  try {
+    path = font.getPath(text, 0, 0, sizeMm, { kerning: true })
+  } catch {
+    // Some fonts (Playfair italic, Great Vibes) use GSUB lookups opentype.js
+    // can't shape yet, whatever feature flags are passed. Lay glyphs out
+    // directly (cmap + advance width + pair kerning, no substitutions).
+    // Deterministic, so browser and server still produce identical outlines.
+    path = plainLayout(font, text, sizeMm)
+  }
+  // Synthetic italic: shear around the baseline (y is down, so ascenders move right).
+  // Applied to the outline itself, so bounds, boundary checks and the production file all see the slant.
+  if (opts.obliqueDeg) {
+    const k = Math.tan((opts.obliqueDeg * Math.PI) / 180)
+    for (const c of path.commands as { x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }[]) {
+      if (c.x !== undefined && c.y !== undefined) c.x -= c.y * k
+      if (c.x1 !== undefined && c.y1 !== undefined) c.x1 -= c.y1 * k
+      if (c.x2 !== undefined && c.y2 !== undefined) c.x2 -= c.y2 * k
+    }
+  }
   const bb = path.getBoundingBox()
   if (!isFinite(bb.x1) || bb.x2 - bb.x1 <= 0) return null
   return {
