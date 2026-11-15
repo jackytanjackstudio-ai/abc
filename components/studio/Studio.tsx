@@ -8,12 +8,14 @@ import {
   FONTS,
   MODELS,
   NAME_COLORS,
+  OBLIQUE_DEG,
   PATTERNS,
   PERSONALIZATION_FEE_CENTS,
   PRODUCTION_DAYS,
   SERIES,
   formatMoney,
   getColor,
+  getFont,
   getModel,
   getNameColor,
   getPattern,
@@ -22,7 +24,7 @@ import {
 import { cart } from '@/lib/cart'
 import { track } from '@/lib/analytics'
 import type { DesignInput, DesignSnapshot } from '@/lib/design'
-import { loadClientFont } from '@/lib/fonts-client'
+import { fontKey, loadClientFont } from '@/lib/fonts-client'
 import {
   boxAt,
   checkPlacement,
@@ -61,6 +63,7 @@ export default function Studio({ inventory, initial }: StudioProps) {
   const [patternId, setPatternId] = useState(startPattern.id)
   const [text, setText] = useState('')
   const [fontId, setFontId] = useState('serif')
+  const [italic, setItalic] = useState(false)
   const [sizeMm, setSizeMm] = useState(startModel.template.fontSizeMm.default)
   const [nameColorId, setNameColorId] = useState('forest')
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
@@ -81,13 +84,13 @@ export default function Studio({ inventory, initial }: StudioProps) {
   const geo = caseGeometry(model)
 
   // ---- fonts: same versioned files the server measures with
-  const loadFonts = useCallback(() => {
-    FONTS.forEach((f) => {
-      loadClientFont(f.id)
-        .then((font) => setFonts((s) => ({ ...s, [f.id]: font })))
-        .catch(() => setFonts((s) => ({ ...s, [f.id]: 'error' })))
-    })
+  const loadVariant = useCallback((id: string, it: boolean) => {
+    const key = fontKey(id, it)
+    loadClientFont(id, it)
+      .then((font) => setFonts((s) => ({ ...s, [key]: font })))
+      .catch(() => setFonts((s) => ({ ...s, [key]: 'error' })))
   }, [])
+  const loadFonts = useCallback(() => FONTS.forEach((f) => loadVariant(f.id, false)), [loadVariant])
   useEffect(() => {
     loadFonts()
     track('studio_start', { model: startModel.id, pattern_id: startPattern.id })
@@ -106,6 +109,7 @@ export default function Studio({ inventory, initial }: StudioProps) {
         if (d.name) {
           setText(d.name.text)
           setFontId(d.name.fontId)
+          setItalic(!!d.name.italic && d.name.italic !== 'none')
           setSizeMm(d.name.sizeMm)
           setNameColorId(d.name.colorId)
           setPos({ x: d.name.x, y: d.name.y })
@@ -118,15 +122,22 @@ export default function Studio({ inventory, initial }: StudioProps) {
   }, [initial.design, initial.line])
 
   // ---- measurement
-  const font = fonts[fontId]
+  const fontMeta = getFont(fontId)!
+  const italicOn = italic && fontMeta.italic !== 'none'
+  const obliqueDeg = italicOn && fontMeta.italic === 'oblique' ? OBLIQUE_DEG : 0
+  // designed italics live in their own file — fetch on demand
+  useEffect(() => {
+    if (italicOn && fonts[fontKey(fontId, true)] === undefined) loadVariant(fontId, true)
+  }, [italicOn, fontId, fonts, loadVariant])
+  const font = fonts[fontKey(fontId, italicOn)]
   const cleanText = normalizeName(text).trim()
   const hasName = cleanText.length > 0
   const tooLong = Array.from(cleanText).length > t.maxChars
   const missing = useMemo(() => (font && font !== 'error' && hasName ? missingGlyphs(font, cleanText) : []), [font, cleanText, hasName])
   const measured = useMemo(() => {
     if (!font || font === 'error' || !hasName || missing.length) return null
-    return measureName(font, cleanText, sizeMm)
-  }, [font, cleanText, hasName, missing.length, sizeMm])
+    return measureName(font, cleanText, sizeMm, { obliqueDeg })
+  }, [font, cleanText, hasName, missing.length, sizeMm, obliqueDeg])
 
   // keep the name in a valid spot as it is typed / restyled
   useEffect(() => {
@@ -142,7 +153,7 @@ export default function Studio({ inventory, initial }: StudioProps) {
 
   const issues: string[] = []
   if (hasName) {
-    if (font === 'error') issues.push(`The ${FONTS.find((f) => f.id === fontId)!.name} font failed to load.`)
+    if (font === 'error') issues.push(`The ${fontMeta.name}${italicOn ? ' italic' : ''} font failed to load.`)
     if (tooLong) issues.push(describeIssue({ code: 'too_long', max: t.maxChars }))
     if (missing.length) issues.push(describeIssue({ code: 'missing_glyphs', chars: missing }))
     if (placementIssue) issues.push(describeIssue(placementIssue))
@@ -234,7 +245,7 @@ export default function Studio({ inventory, initial }: StudioProps) {
       modelId,
       colorId,
       patternId,
-      name: hasName && measured && pos ? { text: cleanText, fontId, sizeMm, colorId: nameColorId, x: pos.x, y: pos.y } : null,
+      name: hasName && measured && pos ? { text: cleanText, fontId, italic: italicOn, sizeMm, colorId: nameColorId, x: pos.x, y: pos.y } : null,
       supersedes: editing?.designId,
     }
     try {
@@ -388,12 +399,12 @@ export default function Studio({ inventory, initial }: StudioProps) {
               <h2 id="h-style" className="font-sans text-sm font-semibold uppercase tracking-[0.18em]">Style</h2>
               <div>
                 <p className="text-sm font-medium">Font</p>
-                <div className="mt-2 grid grid-cols-4 gap-2">
+                <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {FONTS.map((f) => {
-                    const ff = fonts[f.id]
+                    const ff = fonts[fontKey(f.id, false)]
                     const sample = ff && ff !== 'error' ? measureName(ff, 'Aa', 26) : null
                     return (
-                      <button key={f.id} type="button" onClick={() => setFontId(f.id)} aria-pressed={f.id === fontId} className={`flex flex-col items-center rounded-xl border p-2 ${f.id === fontId ? 'border-forest bg-sage-soft' : 'border-forest/20'}`}>
+                      <button key={f.id} type="button" onClick={() => { setFontId(f.id); if (f.italic === 'none') setItalic(false) }} aria-pressed={f.id === fontId} className={`flex flex-col items-center rounded-xl border p-2 ${f.id === fontId ? 'border-forest bg-sage-soft' : 'border-forest/20'}`}>
                         <svg viewBox={sample ? `${sample.x1 - 2} ${sample.y1 - 2} ${sample.w + 4} ${sample.h + 4}` : '0 0 10 10'} className="h-7 w-12" aria-hidden>
                           {sample && <path d={sample.d} fill="currentColor" />}
                         </svg>
@@ -402,8 +413,22 @@ export default function Studio({ inventory, initial }: StudioProps) {
                     )
                   })}
                 </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setItalic((v) => !v)}
+                    disabled={fontMeta.italic === 'none'}
+                    aria-pressed={italicOn}
+                    className={`chip font-serif italic disabled:cursor-not-allowed disabled:opacity-40 ${italicOn ? 'chip-active' : ''}`}
+                  >
+                    Italic
+                  </button>
+                  <span className="text-sm text-forest-soft">
+                    {fontMeta.italic === 'none' ? `${fontMeta.name} is already slanted.` : italicOn ? 'Slanted letters on.' : 'Slant the letters.'}
+                  </span>
+                </div>
                 {font === 'error' && (
-                  <button type="button" className="mt-2 text-sm underline" onClick={loadFonts}>Retry loading fonts</button>
+                  <button type="button" className="mt-2 text-sm underline" onClick={() => { loadFonts(); if (italicOn) loadVariant(fontId, true) }}>Retry loading fonts</button>
                 )}
               </div>
               <div>
@@ -475,7 +500,7 @@ export default function Studio({ inventory, initial }: StudioProps) {
                     <>
                       <span className="rounded bg-white px-2 py-0.5 font-mono text-base tracking-[0.15em]">{cleanText}</span>
                       <span className="block text-xs text-forest-soft">
-                        {FONTS.find((f) => f.id === fontId)!.name} · {sizeMm} mm · {nameColor.name}
+                        {fontMeta.name}{italicOn && ' Italic'} · {sizeMm} mm · {nameColor.name}
                       </span>
                     </>
                   ) : (

@@ -65,6 +65,25 @@ export interface NameFont {
   name: string
   version: number
   file: string
+  /**
+   * How "Italic" is produced: a designed italic file, a 12° oblique of the
+   * upright outlines (same maths in preview, validation and production), or
+   * not offered (already-slanted scripts).
+   */
+  italic: 'file' | 'oblique' | 'none'
+  italicFile?: string
+}
+
+/** Slant applied to fonts without a designed italic. */
+export const OBLIQUE_DEG = 12
+
+/** Which file to load and how much to slant it, for a font + italic choice. */
+export function fontVariant(font: NameFont, italic: boolean) {
+  if (italic && font.italic === 'file' && font.italicFile)
+    return { file: font.italicFile, obliqueDeg: 0, mode: 'file' as const, key: `${font.id}@${font.version}:italic` }
+  if (italic && font.italic === 'oblique')
+    return { file: font.file, obliqueDeg: OBLIQUE_DEG, mode: 'oblique' as const, key: `${font.id}@${font.version}` }
+  return { file: font.file, obliqueDeg: 0, mode: 'none' as const, key: `${font.id}@${font.version}` }
 }
 
 export interface NameColor {
@@ -155,11 +174,20 @@ export const PATTERNS: Pattern[] = [
   { id: 'lifestyle-postmark', series: 'lifestyle', name: 'Postmark', version: 1, active: true, description: 'Stamps from places visited.' },
 ]
 
+// All fonts are SIL Open Font License (free for commercial use and product printing).
+// Bump `version` and ship a new file name whenever a file changes — old orders keep theirs.
 export const FONTS: NameFont[] = [
-  { id: 'serif', name: 'Serif', version: 1, file: '/fonts/serif-v1.woff' },
-  { id: 'sans', name: 'Sans', version: 1, file: '/fonts/sans-v1.woff' },
-  { id: 'script', name: 'Script', version: 1, file: '/fonts/script-v1.woff' },
-  { id: 'block', name: 'Block', version: 1, file: '/fonts/block-v1.woff' },
+  { id: 'serif', name: 'Serif', version: 1, file: '/fonts/serif-v1.woff', italic: 'file', italicFile: '/fonts/serif-italic-v1.woff' }, // Playfair Display 700
+  { id: 'classic', name: 'Classic', version: 1, file: '/fonts/classic-v1.woff', italic: 'file', italicFile: '/fonts/classic-italic-v1.woff' }, // Cormorant Garamond 700
+  { id: 'display', name: 'Display', version: 1, file: '/fonts/display-v1.woff', italic: 'file', italicFile: '/fonts/display-italic-v1.woff' }, // DM Serif Display
+  { id: 'fatface', name: 'Bold Serif', version: 1, file: '/fonts/fatface-v1.woff', italic: 'oblique' }, // Abril Fatface
+  { id: 'sans', name: 'Sans', version: 1, file: '/fonts/sans-v1.woff', italic: 'file', italicFile: '/fonts/sans-italic-v1.woff' }, // Montserrat 700
+  { id: 'geometric', name: 'Geometric', version: 1, file: '/fonts/geometric-v1.woff', italic: 'file', italicFile: '/fonts/geometric-italic-v1.woff' }, // Josefin Sans 700
+  { id: 'block', name: 'Block', version: 1, file: '/fonts/block-v1.woff', italic: 'oblique' }, // Bebas Neue
+  { id: 'typewriter', name: 'Typewriter', version: 1, file: '/fonts/typewriter-v1.woff', italic: 'file', italicFile: '/fonts/typewriter-italic-v1.woff' }, // Courier Prime 700
+  { id: 'script', name: 'Handwritten', version: 1, file: '/fonts/script-v1.woff', italic: 'oblique' }, // Caveat 700
+  { id: 'signature', name: 'Signature', version: 1, file: '/fonts/signature-v1.woff', italic: 'none' }, // Great Vibes
+  { id: 'retro', name: 'Retro', version: 1, file: '/fonts/retro-v1.woff', italic: 'none' }, // Pacifico
 ]
 
 export const NAME_COLORS: NameColor[] = [

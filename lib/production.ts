@@ -24,7 +24,7 @@ export function nameLayerSvg(d: DesignSnapshot) {
   const n = d.name
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${panelW}mm" height="${panelH}mm" viewBox="0 0 ${panelW} ${panelH}">
-  <!-- design ${d.id} v${d.version} · template ${d.templateId}@${d.templateVersion} · font ${n.fontId}@${n.fontVersion} -->
+  <!-- design ${d.id} v${d.version} · template ${d.templateId}@${d.templateVersion} · font ${n.fontId}@${n.fontVersion}${n.italic && n.italic !== 'none' ? ` italic(${n.italic})` : ''} -->
   <path d="${n.outline.d}" transform="translate(${n.outline.tx} ${n.outline.ty})" fill="${n.colorHex}"/>
 </svg>`
 }
@@ -47,6 +47,7 @@ export function positioningSheet(job: ProductionJob, d: DesignSnapshot) {
       ? {
           text: d.name.text,
           font: `${d.name.fontId}@${d.name.fontVersion}`,
+          italic: d.name.italic ?? 'none', // already baked into the outline file
           sizeMm: d.name.sizeMm,
           color: { name: d.name.colorName, hex: d.name.colorHex },
           anchor: 'outline centre',

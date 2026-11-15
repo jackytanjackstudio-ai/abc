@@ -7,6 +7,7 @@ import {
   getFont,
   getModel,
   getNameColor,
+  fontVariant,
   getPattern,
   sku as makeSku,
 } from './catalog'
@@ -52,11 +53,15 @@ export function buildSnapshot(input: DesignInput, inventory: Record<string, numb
     const y = num(raw.y)
     if (isNaN(x) || isNaN(y)) throw new DesignError('name.position', 'Name position is missing.')
 
-    const font = loadServerFont(fontMeta.id)
-    if (!font) throw new DesignError('name.fontId', 'Font unavailable.')
+    if (raw.italic !== undefined && typeof raw.italic !== 'boolean') throw new DesignError('name.italic', 'Invalid italic option.')
+    const wantItalic = raw.italic === true
+    if (wantItalic && fontMeta.italic === 'none') throw new DesignError('name.italic', `${fontMeta.name} has no italic style.`)
+    const loaded = loadServerFont(fontMeta.id, wantItalic)
+    if (!loaded) throw new DesignError('name.fontId', 'Font unavailable.')
+    const { font, obliqueDeg } = loaded
     const missing = missingGlyphs(font, text)
     if (missing.length) throw new DesignError('name.text', describeIssue({ code: 'missing_glyphs', chars: missing }))
-    const m = measureName(font, text, sizeMm)
+    const m = measureName(font, text, sizeMm, { obliqueDeg })
     if (!m) throw new DesignError('name.text', 'This name has no printable characters.')
     const box = boxAt(m, x, y)
     const issue = checkPlacement(t, box)
@@ -66,6 +71,7 @@ export function buildSnapshot(input: DesignInput, inventory: Record<string, numb
       text,
       fontId: fontMeta.id,
       fontVersion: fontMeta.version,
+      italic: fontVariant(fontMeta, wantItalic).mode,
       sizeMm,
       colorId: nameColor.id,
       colorName: nameColor.name,
