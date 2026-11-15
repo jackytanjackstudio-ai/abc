@@ -49,7 +49,7 @@ export default function PatternMatrix({
             <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
               {patterns.map((p) => (
                 <li key={p.id} id={p.id} className={`rounded-2xl bg-sand p-4 ${highlight === p.id ? 'ring-2 ring-forest' : ''}`}>
-                  <Link href={`/products/cabin?pattern=${p.id}&color=${color.id}`} className="group block">
+                  <Link href={`/collections/${p.series}/${p.id.replace(`${p.series}-`, '')}?color=${color.id}`} className="group block">
                     <SvgImage svg={renderSwatchSvg(p.id, color, `${p.name} pattern swatch`)} className="aspect-square overflow-hidden rounded-xl" />
                     <SvgImage
                       svg={renderCaseSvg(cabin, color, p.id, { uid: `m-${p.id}`, title: `${p.name} pattern on a ${color.name} case` })}

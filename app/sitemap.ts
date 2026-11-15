@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { MODELS, SERIES } from '@/lib/catalog'
+import { MODELS, PATTERNS, SERIES } from '@/lib/catalog'
 
 // Public, indexable pages only (no cart, checkout, studio or order pages).
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/help',
     '/contact',
     ...SERIES.map((s) => `/collections/${s.id}`),
+    ...PATTERNS.filter((p) => p.active).map((p) => `/collections/${p.series}/${p.id.replace(`${p.series}-`, '')}`),
     ...MODELS.map((m) => `/products/${m.id}`),
   ].map((p) => ({ url: `${base}${p}` }))
 }

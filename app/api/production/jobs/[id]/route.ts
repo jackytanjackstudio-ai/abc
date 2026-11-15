@@ -4,7 +4,7 @@ import { getDesign, getJob } from '@/lib/store'
 
 export const dynamic = 'force-dynamic'
 
-// ?format=sheet (default, JSON positioning sheet) | svg (outlined name layer) | preview (composite)
+// ?format=sheet (default, JSON positioning sheet) | svg (layered UV DTF name file; &mirror=1 to mirror) | preview (composite)
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   if (!authorizeProduction(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const job = await getJob(params.id)
@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const format = new URL(request.url).searchParams.get('format') ?? 'sheet'
   const noStore = { 'Cache-Control': 'no-store' }
   if (format === 'svg') {
-    const svg = nameLayerSvg(design)
+    const svg = nameLayerSvg(design, { mirror: new URL(request.url).searchParams.get('mirror') === '1' })
     if (!svg) return NextResponse.json({ error: 'no name layer for this line' }, { status: 404 })
     return new NextResponse(svg, {
       headers: { ...noStore, 'Content-Type': 'image/svg+xml', 'Content-Disposition': `attachment; filename="${job.orderNumber}-L${job.lineNo}-name.svg"` },

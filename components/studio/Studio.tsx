@@ -72,6 +72,9 @@ export default function Studio({ inventory, initial }: StudioProps) {
   const [dragging, setDragging] = useState(false)
   const [fonts, setFonts] = useState<FontState>({})
   const [checked, setChecked] = useState(false)
+  const [compare, setCompare] = useState(false) // before/after: temporarily hide the name layer
+  const [linkNote, setLinkNote] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [qty, setQty] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -97,9 +100,9 @@ export default function Studio({ inventory, initial }: StudioProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ---- edit an existing cart line
+  // ---- open a saved design (?design=) — and, with ?line=, edit that cart line
   useEffect(() => {
-    if (!initial.design || !initial.line) return
+    if (!initial.design) return
     fetch(`/api/designs/${encodeURIComponent(initial.design)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: DesignSnapshot) => {
@@ -114,9 +117,11 @@ export default function Studio({ inventory, initial }: StudioProps) {
           setNameColorId(d.name.colorId)
           setPos({ x: d.name.x, y: d.name.y })
         }
-        setEditing({ designId: d.id, lineId: initial.line! })
-        const line = cart.get().find((l) => l.lineId === initial.line)
-        if (line) setQty(line.qty)
+        const line = initial.line ? cart.get().find((l) => l.lineId === initial.line) : undefined
+        if (line) {
+          setEditing({ designId: d.id, lineId: line.lineId })
+          setQty(line.qty)
+        }
       })
       .catch(() => setEditLoadError('We could not load this design. You can start a new one below.'))
   }, [initial.design, initial.line])
@@ -190,6 +195,10 @@ export default function Studio({ inventory, initial }: StudioProps) {
   // ---- drag (pointer = touch, mouse, pen)
   const svgRef = useRef<SVGSVGElement>(null)
   const dragOffset = useRef<{ dx: number; dy: number } | null>(null)
+  // active pointers on the name layer (2 = pinch to scale) and resize-handle state
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const scaleStart = useRef<{ dist: number; size: number } | null>(null)
+  const clampSize = (v: number) => Math.round(Math.min(t.fontSizeMm.max, Math.max(t.fontSizeMm.min, v)))
   const toLid = (clientX: number, clientY: number) => {
     const svg = svgRef.current!
     const pt = svg.createSVGPoint()
@@ -198,26 +207,95 @@ export default function Studio({ inventory, initial }: StudioProps) {
     const p = pt.matrixTransform(svg.getScreenCTM()!.inverse())
     return { x: p.x - geo.lid.x, y: p.y - geo.lid.y }
   }
+  // Phones: `touch-action` is not reliably honoured on SVG children, so stop the
+  // page from scrolling/zooming while a finger is on the name layer or handle.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    const onName = (e: TouchEvent) => !!(e.target as Element | null)?.closest?.('[data-testid=name-layer]')
+    const start = (e: TouchEvent) => {
+      if (onName(e)) e.preventDefault()
+    }
+    const move = (e: TouchEvent) => {
+      if (onName(e) || dragOffset.current || scaleStart.current || resizeStart.current) e.preventDefault()
+    }
+    svg.addEventListener('touchstart', start, { passive: false })
+    svg.addEventListener('touchmove', move, { passive: false })
+    return () => {
+      svg.removeEventListener('touchstart', start)
+      svg.removeEventListener('touchmove', move)
+    }
+  }, [])
+  const pinchDist = () => {
+    const [a, b] = Array.from(pointers.current.values())
+    return Math.hypot(a.x - b.x, a.y - b.y)
+  }
   const onPointerDown = (e: React.PointerEvent) => {
     if (!pos) return
     e.preventDefault()
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    setRelocated(null)
+    if (pointers.current.size === 2) {
+      // second finger: switch from moving to pinch-scaling
+      dragOffset.current = null
+      scaleStart.current = { dist: pinchDist(), size: sizeMm }
+      return
+    }
     const p = toLid(e.clientX, e.clientY)
     dragOffset.current = { dx: p.x - pos.x, dy: p.y - pos.y }
     setDragging(true)
-    setRelocated(null)
   }
   const onPointerMove = (e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (scaleStart.current && pointers.current.size === 2) {
+      const ratio = pinchDist() / Math.max(1, scaleStart.current.dist)
+      setSizeMm(clampSize(scaleStart.current.size * ratio))
+      return
+    }
     if (!dragOffset.current || !measured || !pos) return
     const p = toLid(e.clientX, e.clientY)
     const r = constrainMove(t, measured, pos, { x: p.x - dragOffset.current.dx, y: p.y - dragOffset.current.dy })
     setPos({ x: r.x, y: r.y })
     setHit(r.hit)
   }
-  const endDrag = () => {
-    dragOffset.current = null
+  const endDrag = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) scaleStart.current = null
+    if (pointers.current.size === 0) {
+      dragOffset.current = null
+      setDragging(false)
+      setTimeout(() => setHit(null), 1500)
+    }
+  }
+  // corner handle: drag away from / toward the centre to scale proportionally
+  const resizeStart = useRef<{ dist: number; size: number } | null>(null)
+  const onHandleDown = (e: React.PointerEvent) => {
+    if (!pos) return
+    e.preventDefault()
+    e.stopPropagation()
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    const p = toLid(e.clientX, e.clientY)
+    resizeStart.current = { dist: Math.max(1, Math.hypot(p.x - pos.x, p.y - pos.y)), size: sizeMm }
+    setDragging(true)
+    setRelocated(null)
+  }
+  const onHandleMove = (e: React.PointerEvent) => {
+    if (!resizeStart.current || !pos) return
+    e.stopPropagation()
+    const p = toLid(e.clientX, e.clientY)
+    setSizeMm(clampSize(resizeStart.current.size * (Math.hypot(p.x - pos.x, p.y - pos.y) / resizeStart.current.dist)))
+  }
+  const onHandleUp = () => {
+    resizeStart.current = null
     setDragging(false)
-    setTimeout(() => setHit(null), 1500)
+  }
+  const placeAt = (target: { x: number; y: number }) => {
+    if (!measured) return
+    const r = nearestValid(t, measured, target)
+    if (r) setPos(r)
+    setRelocated(null)
   }
   const nudge = (dx: number, dy: number) => {
     if (!measured || !pos) return
@@ -234,6 +312,58 @@ export default function Studio({ inventory, initial }: StudioProps) {
       e.preventDefault()
       nudge(d[0], d[1])
     }
+  }
+
+  // ---- save for later / share
+  const canSave = !saving && issues.length === 0 && !!fontsReady && (!hasName || (!!measured && !!pos))
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      return false
+    }
+  }
+  async function saveForLater() {
+    if (!canSave) return
+    setSaving(true)
+    setLinkNote(null)
+    try {
+      const input: DesignInput = {
+        modelId,
+        colorId,
+        patternId,
+        name: hasName && measured && pos ? { text: cleanText, fontId, italic: italicOn, sizeMm, colorId: nameColorId, x: pos.x, y: pos.y } : null,
+      }
+      const res = await fetch('/api/designs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not save the design.')
+      const url = `${window.location.origin}/studio?design=${data.id}`
+      try {
+        const saved = JSON.parse(localStorage.getItem('viarou_saved') || '[]') as string[]
+        localStorage.setItem('viarou_saved', JSON.stringify([data.id, ...saved.filter((x) => x !== data.id)].slice(0, 20)))
+      } catch {}
+      window.history.replaceState(null, '', `/studio?design=${data.id}`)
+      setLinkNote((await copy(url)) ? 'Saved. Private link copied — open it any time to keep editing.' : `Saved. Bookmark this page to come back: ${url}`)
+    } catch (e) {
+      setLinkNote((e as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function shareLook() {
+    // shared links carry the case, colour and pattern only — never the customer's name
+    const url = `${window.location.origin}/studio?model=${modelId}&color=${colorId}&pattern=${patternId}`
+    const nav = navigator as Navigator & { share?: (d: { title: string; url: string }) => Promise<void> }
+    if (nav.share) {
+      try {
+        await nav.share({ title: `${model.name} · ${pattern.name}`, url })
+        return
+      } catch {
+        /* cancelled — fall back to copying */
+      }
+    }
+    setLinkNote((await copy(url)) ? 'Link copied. Shared links show the pattern, not your name.' : url)
   }
 
   // ---- submit
@@ -297,8 +427,14 @@ export default function Studio({ inventory, initial }: StudioProps) {
                       ))}
                     </g>
                   )}
-                  {measured && origin && pos && (
+                  {measured && origin && pos && !compare && (
                     <g
+                      data-testid="name-layer"
+                      data-x={pos.x}
+                      data-y={pos.y}
+                      data-size={sizeMm}
+                      data-w={measured.w}
+                      data-h={measured.h}
                       tabIndex={0}
                       role="img"
                       aria-label={`Name "${cleanText}". Drag to move, or use arrow keys (Shift for bigger steps).`}
@@ -312,12 +448,43 @@ export default function Studio({ inventory, initial }: StudioProps) {
                     >
                       <rect x={pos.x - measured.w / 2 - 4} y={pos.y - measured.h / 2 - 4} width={measured.w + 8} height={measured.h + 8} fill="transparent" stroke={placementIssue ? '#9E3A25' : '#1F3A2E'} strokeWidth={1.2} strokeDasharray="4 3" opacity={dragging || placementIssue ? 0.9 : 0.35} className="group-focus:opacity-90" />
                       <path d={measured.d} transform={`translate(${origin.x} ${origin.y})`} fill={nameColor.hex} />
+                      {/* resize handle (bottom-right corner): drag to scale the name proportionally */}
+                      <g
+                        data-testid="resize-handle"
+                        onPointerDown={onHandleDown}
+                        onPointerMove={onHandleMove}
+                        onPointerUp={onHandleUp}
+                        onPointerCancel={onHandleUp}
+                        style={{ cursor: 'nwse-resize', touchAction: 'none' }}
+                        aria-hidden
+                      >
+                        <circle cx={pos.x + measured.w / 2 + 4} cy={pos.y + measured.h / 2 + 4} r={16} fill="transparent" />
+                        <circle cx={pos.x + measured.w / 2 + 4} cy={pos.y + measured.h / 2 + 4} r={7} fill="#F8F5EF" stroke="#1F3A2E" strokeWidth={2} />
+                      </g>
                     </g>
                   )}
                 </g>
               </svg>
-              <p aria-live="polite" className={`mt-2 min-h-[1.25rem] text-center text-sm ${hit ? 'text-alert' : 'text-forest-soft'}`}>
-                {hit ? (hit === 'edge' ? 'That’s the edge of the printable area.' : `Can’t print over the ${hit}.`) : hasName && measured ? 'Drag the name to move it.' : ' '}
+              {hasName && measured && (
+                <button
+                  type="button"
+                  aria-pressed={compare}
+                  onClick={() => setCompare((v) => !v)}
+                  className="absolute right-4 top-4 rounded-full bg-paper/90 px-3 py-1.5 text-xs font-semibold shadow-sm"
+                >
+                  {compare ? 'Show my name' : 'Before / after'}
+                </button>
+              )}
+              <p aria-live="polite" className={`mt-2 flex min-h-[2.5rem] items-center justify-center text-center text-sm leading-5 ${hit ? 'text-alert' : 'text-forest-soft'}`}>
+                {compare
+                  ? 'Showing the pattern without your name.'
+                  : hit
+                    ? hit === 'edge'
+                      ? 'That’s the edge of the printable area.'
+                      : `Can’t print over the ${hit}.`
+                    : hasName && measured
+                      ? 'Drag to move · drag the corner dot (or pinch) to resize.'
+                      : ' '}
               </p>
             </div>
           </div>
@@ -452,21 +619,15 @@ export default function Studio({ inventory, initial }: StudioProps) {
               </div>
               <div>
                 <p className="text-sm font-medium">Position</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="chip"
-                    disabled={!measured}
-                    onClick={() => {
-                      if (!measured) return
-                      const r = recommendedPosition(t, measured)
-                      if (r) setPos(r)
-                      setRelocated(null)
-                    }}
-                  >
-                    Recommended position
-                  </button>
-                  <span className="text-sm text-forest-soft">or drag on the preview · fine-tune:</span>
+                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Quick positions">
+                  {t.presets.map((p) => (
+                    <button key={p.id} type="button" className="chip" disabled={!measured} onClick={() => placeAt(p)}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-forest-soft">Or drag it anywhere on the case. Fine-tune:</span>
                   <div className="flex gap-1" role="group" aria-label="Move name by 1 mm">
                     {([['←', -1, 0, 'left'], ['↑', 0, -1, 'up'], ['↓', 0, 1, 'down'], ['→', 1, 0, 'right']] as const).map(([s, dx, dy, label]) => (
                       <button key={label} type="button" className="chip px-3" aria-label={`Move ${label} 1 mm`} disabled={!measured} onClick={() => nudge(dx, dy)}>
@@ -540,6 +701,16 @@ export default function Studio({ inventory, initial }: StudioProps) {
             <button type="button" className="btn-primary mt-5 w-full" disabled={!canConfirm} onClick={confirm}>
               {submitting ? 'Saving…' : editing ? 'Save changes to cart' : 'Confirm preview & add to cart'}
             </button>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" className="chip" disabled={!canSave || saving} onClick={saveForLater}>
+                {saving ? 'Saving…' : 'Save design'}
+              </button>
+              <button type="button" className="chip" onClick={shareLook}>
+                Share this look
+              </button>
+            </div>
+            <p aria-live="polite" className="mt-2 min-h-[1.25rem] text-xs text-forest-soft">{linkNote}</p>
           </section>
         </div>
       </div>

@@ -157,3 +157,8 @@ export async function applyPaymentEvent(eventId: string, orderId: string, fn: (c
     return true
   })
 }
+
+// ---- customer-service messages
+export async function insertContactMessage(m: { id: string; name: string; email: string; orderNumber?: string; topic: string; message: string }) {
+  await (await db()).query('INSERT INTO contact_messages (id, data) VALUES ($1, $2)', [m.id, JSON.stringify(m)])
+}

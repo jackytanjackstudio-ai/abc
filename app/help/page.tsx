@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/help' },
 }
 
-// Policy wording is a draft for operations/legal to replace (brief p.9, p.17).
+// TODO(ops/legal): confirm this wording matches the real production and returns process before launch.
 export default function Help() {
   return (
     <div className="container-custom max-w-3xl py-12">
